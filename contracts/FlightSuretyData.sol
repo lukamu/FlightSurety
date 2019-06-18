@@ -2,6 +2,7 @@ pragma solidity ^0.4.25;
 
 import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 
+
 contract FlightSuretyData {
     using SafeMath for uint256;
 
@@ -9,9 +10,29 @@ contract FlightSuretyData {
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
 
-    address private contractOwner;                                      // Account used to deploy contract
-    bool private operational = true;                                    // Blocks all state changes throughout the contract if false
+    address private contractOwner;                      // Account used to deploy contract
+    bool private operational = true;                    // Blocks all state changes throughout the contract if false
+    address[] multiCalls = new address[](0);            // Multisig
+    uint256 constant multisig_threshold = 4;
+    uint256 public constant MIN_AIRLINES_FUND = 10 ether;   // Airlines has to fund at least 10 ETH
+    uint256 public constant MAX_FLIGHT_INSURANCE = 1 ether;
 
+    // Define enum 'State' with the following values:
+    enum State { 
+    Registered, // 0
+    Funded    // 1
+    }
+
+    // Struct of registered airline addresses
+    struct RegisteredAirlines {
+        bool isRegistered;
+        bool isFunded;       // True is 10ETH has been payed.
+        State airLineState;
+    }
+    mapping(address => RegisteredAirlines) registeredAirlines;   // Mapping for storing Registered Airlines
+
+    event Registered(address _airLine);
+    event Funded(address _airLine);
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
@@ -23,10 +44,17 @@ contract FlightSuretyData {
     */
     constructor
                                 (
+                                    address airlineAddress
                                 ) 
                                 public 
     {
         contractOwner = msg.sender;
+        // Register the first airline
+        registeredAirlines[airlineAddress] = RegisteredAirlines({
+                                                isRegistered: true,
+                                                isFunded: false,
+                                                airLineState: State.Registered
+                                            });
     }
 
     /********************************************************************************************/
@@ -53,6 +81,24 @@ contract FlightSuretyData {
     modifier requireContractOwner()
     {
         require(msg.sender == contractOwner, "Caller is not contract owner");
+        _;
+    }
+
+    // Define a modifier that checks if the paid amount is sufficient to cover the minimu fund requested.
+    modifier paidEnough() { 
+        require(msg.value >= minimumFund); 
+        _;
+    }
+
+    // Define a modifier that checks if an item.state of a upc is Prototyped
+    modifier registered(address _airLine) {
+        require(registeredAirlines[_airLine].airLineState == State.Registered);
+        _;
+    }
+    
+    // Define a modifier that checks if an item.state of a upc is Prototyped
+    modifier funded(address _airLine) {
+        require(registeredAirlines[_airLine].airLineState == State.Funded);
         _;
     }
 
@@ -99,11 +145,48 @@ contract FlightSuretyData {
     *
     */   
     function registerAirline
-                            (   
+                            (
+                                address account
                             )
                             external
-                            pure
+                            requireIsOperational
     {
+        require(mode != operational, "New mode must be different from existing mode");
+        require(!registeredAirlines[account].isRegistered, "User is already registered.");
+
+        bool isDuplicate = false;
+        bool success = false;
+        uint256 M = registeredAirlines.length.div(2);
+
+        //If there are les than threshold (for this project the requirement is 4) airlines, do not use multisig and register it.
+        if (registeredAirlines.length < multisig_threshold) {
+            registeredAirlines[account] = RegisteredAirlines({
+                                                isRegistered: true,
+                                                isFunded: false,
+                                                airLineState: State.Registered
+                                            });
+            success = true;
+        } else {
+            for(uint c=0; c<multiCalls.length; c++) {
+                if (multiCalls[c] == msg.sender) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+            require(!isDuplicate, "Caller has already called this function.");
+
+            multiCalls.push(msg.sender);
+            if (multiCalls.length >= M) {
+                registeredAirlines[account] = RegisteredAirlines({
+                                                    isRegistered: true,
+                                                    isFunded: false,
+                                                    airLineState: State.Registered
+                                                });
+                success = true;
+                multiCalls = new address[](0);      
+            }
+        }
+        return (success, multiCalls.length);
     }
 
 
@@ -115,6 +198,7 @@ contract FlightSuretyData {
                             (                             
                             )
                             external
+                            requireIsOperational
                             payable
     {
 
@@ -127,6 +211,7 @@ contract FlightSuretyData {
                                 (
                                 )
                                 external
+                                requireIsOperational
                                 pure
     {
     }
@@ -140,6 +225,7 @@ contract FlightSuretyData {
                             (
                             )
                             external
+                            requireIsOperational
                             pure
     {
     }
@@ -150,11 +236,17 @@ contract FlightSuretyData {
     *
     */   
     function fund
-                            (   
+                            (
+                                address insurance  
                             )
                             public
+                            requireIsOperational
+                            paidEnough
                             payable
     {
+      insurance.transfer(msg.value);
+      // emit the appropriate event
+      emit Funded(_upc);
     }
 
     function getFlightKey
@@ -165,6 +257,7 @@ contract FlightSuretyData {
                         )
                         pure
                         internal
+                        requireIsOperational
                         returns(bytes32) 
     {
         return keccak256(abi.encodePacked(airline, flight, timestamp));
