@@ -14,7 +14,6 @@ contract FlightSuretyData {
     bool private operational = true;                        // Blocks all state changes throughout the contract if false
     
     uint256 public constant MIN_AIRLINES_FUND = 10 ether;   // Airlines has to fund at least 10 ETH
-    uint256 public constant MAX_FLIGHT_INSURANCE = 1 ether;
     uint8 private constant MULTISIG_THRESHOLD = 4;          // Minimum number of airlines required to enable multisig 
                                                             // for registering new airlines.
 
@@ -26,7 +25,10 @@ contract FlightSuretyData {
         bool isRegistered;
         bool isFunded;       
     }
-    mapping(address => Airline) airline;   // Mapping for storing Airlines
+    mapping(address => Airline) airline;    // Mapping for storing Airlines
+    uint256 totalFundedAirLines;               // Unfortunatly Solidity doesn't have the iterator for a structure, so I have to
+                                            // the total number of funded airline to manage how many airlines can vote.
+
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
@@ -44,10 +46,11 @@ contract FlightSuretyData {
     {
         contractOwner = msg.sender;
         // Register the first airline
-        airline[airlineAddress] = RegisteredAirlines({
+        airline[airlineAddress] = Airline({
                                                 isRegistered: true,
                                                 isFunded: false
                                             });
+        totalFundedAirLines = 0;
     }
 
     /********************************************************************************************/
@@ -79,7 +82,7 @@ contract FlightSuretyData {
 
     // Define a modifier that checks if the paid amount is sufficient to cover the minimu fund requested.
     modifier paidEnough() { 
-        require(msg.value >= MIN_FLIGHT_FUND_AMOUNT, 'Minimum fund required is 10 ETH'); 
+        require(msg.value >= MIN_AIRLINES_FUND, 'Minimum fund required is 10 ETH'); 
         _;
     }
 
@@ -98,6 +101,13 @@ contract FlightSuretyData {
     // Define a modifier that checks if an airline is funded.
     modifier requireFunded(address _airLine) {
         require(airline[_airLine].isFunded == true, 'AirLine his not funded');
+        _;
+    }
+
+    // Define a modifier that checks if airline has been already funded
+    modifier requireIsNotAlreadyFunded (address account)
+    {
+        require(airline[account].isFunded == false, "Airline has been already funded");
         _;
     }
 
@@ -167,7 +177,7 @@ contract FlightSuretyData {
         success = false;
 
         //If there are less than MULTISIG_THRESHOLD registered airlines, do not use multisig and register it.
-        if (totalAirlinesRegistered.length < MULTISIG_THRESHOLD) {
+        if (totalFundedAirLines < MULTISIG_THRESHOLD) {
             airline[airline_address] = Airline({
                                                 isRegistered: true,
                                                 isFunded: false
@@ -183,7 +193,7 @@ contract FlightSuretyData {
             require(!isDuplicate, "Caller has already called this function.");
 
             multiCalls.push(msg.sender);
-            if (multiCalls.length >= airline.length.div(2)) {
+            if (multiCalls.length >= totalFundedAirLines.div(2)) {
                 airline[airline_address] = Airline({
                                                     isRegistered: true,
                                                     isFunded: false
@@ -217,7 +227,6 @@ contract FlightSuretyData {
                                 (
                                 )
                                 external
-                                requireIsOperational
                                 pure
     {
     }
@@ -231,7 +240,6 @@ contract FlightSuretyData {
                             (
                             )
                             external
-                            requireIsOperational
                             pure
     {
     }
@@ -247,11 +255,13 @@ contract FlightSuretyData {
                             public
                             requireIsOperational
                             requireRegistered(msg.sender)
-                            paidEnough(msg.sender)
+                            requireIsNotAlreadyFunded(msg.sender)
+                            paidEnough
                             payable
     {
       airline[msg.sender].isFunded = true;  
       total_funded_balance.add(msg.value);
+      totalFundedAirLines = totalFundedAirLines.add(1);
       contractOwner.transfer(msg.value);
     }
 
@@ -261,7 +271,6 @@ contract FlightSuretyData {
                             string memory flight,
                             uint256 timestamp
                         )
-                        pure
                         internal
                         requireIsOperational
                         returns(bytes32) 
