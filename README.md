@@ -15,6 +15,9 @@ To install, download or clone the repo, then:
 
 To run truffle tests:
 
+Run ganache with at least 50 accounts: Oracle test uses more than the default 10 accounts.
+`ganache-cli -a50`
+
 `truffle test ./test/flightSurety.js`
 `truffle test ./test/oracles.js`
 
