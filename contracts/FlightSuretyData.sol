@@ -25,6 +25,8 @@ contract FlightSuretyData {
         bool isRegistered;
         bool isFunded;       
     }
+
+    mapping(address => bool) private authorized;
     mapping(address => Airline) airline;    // Mapping for storing Airlines
     uint256 totalFundedAirLines;               // Unfortunatly Solidity doesn't have the iterator for a structure, so I have to
                                             // the total number of funded airline to manage how many airlines can vote.
@@ -151,6 +153,25 @@ contract FlightSuretyData {
     */ 
     function isAirLineFunded(address _airline) view public returns(bool) {
         return airline[_airline].isFunded;
+    }
+
+    /**
+    * @dev Returns if an airlines is registred or not.
+    *
+    * @return A boolean: true is is registred, false otherwise.
+    */ 
+    function isAirLineRegistred(address _airline) view public returns(bool) {
+        return airline[_airline].isRegistered;
+    }
+
+    function authorizeCaller(address caller) public
+    {
+        authorized[caller] = true;
+    }
+
+    function isAuthorized(address caller) public view returns (bool)
+    {
+        return authorized[caller];
     }
 
     /********************************************************************************************/

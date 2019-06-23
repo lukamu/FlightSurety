@@ -139,9 +139,20 @@ contract FlightSuretyApp {
         operational = mode;
     }
 
+    // Return true if the flight has been registred
     function isFlightRegistered(bytes32 _flight) public view returns (bool)
     {
         return flights[_flight].isRegistered == true;
+    }
+
+    //Return the price amount of the insurance bought by a passenger for a flight.
+    function getFlightInsuranceAmount(bytes32 flight) public view returns (uint256)
+    {
+        for (uint256 i = 0; i < flights[flight].insurancePassengers.length; i++) {
+            if (flights[flight].insurancePassengers[i] == msg.sender)
+                return flights[flight].insuranceBalance[i];
+        }
+        return 0;
     }
 
     /********************************************************************************************/
@@ -265,7 +276,10 @@ contract FlightSuretyApp {
                                 private
                                 requireIsOperational
     {
-        creditAccount[passengerAddress] = insuranceAmount;
+         //If flight is delayed due to airline fault, passenger received credit
+         //of 1.5x the amount they paid.
+        uint256 credit = insuranceAmount.mul(3).div(2);
+        creditAccount[passengerAddress] = credit;
     }
 
     /**
