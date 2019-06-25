@@ -25,6 +25,59 @@ import './flightsurety.css';
                 display('Oracles', 'Trigger oracles', [ { label: 'Fetch Flight Status', error: error, value: result.flight + ' ' + result.timestamp} ]);
             });
         })
+
+        // Fund Airline
+        // User-submitted transaction
+        DOM.elid('fund').addEventListener('click', () => {
+            contract.fund((error, result) => {
+                console.log(result);
+            });
+        })  
+        
+        // Register Flight
+        // User-submitted transaction
+        DOM.elid('registerFlight').addEventListener('click', () => {
+            let flight = DOM.elid('select_register_flight').value;
+            contract.registerFlight(flight,(error, data) => {
+                console.log(data);
+            });
+        })
+
+        // Is a Registered Flight
+        // User-submitted transaction
+        DOM.elid('isRegisteredFlight').addEventListener('click', () => {
+            let flight = DOM.elid('select_register_flight').value;
+            contract.isFlightRegistered(flight,(error, data) => {
+                console.log(data);
+            });
+        })
+
+        // Buy Insurance
+        // User-submitted transaction
+        DOM.elid('buyInsurance').addEventListener('click', () => {            
+            let insuranceValue = DOM.elid('insuranceValue').value;
+            let flight = DOM.elid('select_buy_insurance').value;            
+            contract.buy(flight,insuranceValue,(error, result) => {
+                console.log(result);
+            });
+        })
+
+        // Fetch Status
+        // User-submitted transaction
+        DOM.elid('fetchFlightStatus').addEventListener('click', () => {
+            let flight = DOM.elid('select_fetch').value;   
+            contract.fetchFlightStatus(flight,(error, result) => {
+                console.log(result);
+            });
+        }) 
+
+        // Withdrawal
+        // User-submitted transaction
+        DOM.elid('withdraw').addEventListener('click', () => {
+            contract.withdraw((error, data) => {
+                console.log(data);
+            });
+        }) 
     
     });
     

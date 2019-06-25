@@ -166,13 +166,24 @@ contract FlightSuretyApp {
     */   
     function registerAirline
                             (
-                                address account   
+                                address account
                             )
                             external
                             requireIsOperational
                             returns(bool success, uint256 votes)
     {
-        return fsDataContract.registerAirline(account);
+        return fsDataContract.registerAirline(account, msg.sender);
+    }
+
+    function fund
+                            (
+                                address _address
+                            )
+                            external
+                            requireIsOperational
+                            payable
+    {
+        fsDataContract.fund.value(msg.value)(_address);
     }
 
 
@@ -469,6 +480,6 @@ contract FlightSuretyApp {
 contract FlightSuretyData {
     function isOperational() external returns(bool);
     function isAirLineFunded(address airline) external returns(bool);
-    function registerAirline(address airline) external returns(bool success, uint256 votes);
-    function fund() external payable;
+    function registerAirline(address airline, address _caller_airline) external returns(bool success, uint256 votes);
+    function fund(address _address) external payable;
 }

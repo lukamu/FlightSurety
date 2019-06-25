@@ -102,7 +102,7 @@ contract FlightSuretyData {
     
     // Define a modifier that checks if an airline is funded.
     modifier requireFunded(address _airLine) {
-        require(airline[_airLine].isFunded == true, 'AirLine his not funded');
+        require(airline[_airLine].isFunded == true, 'AirLine is not funded');
         _;
     }
 
@@ -185,12 +185,13 @@ contract FlightSuretyData {
     */   
     function registerAirline
                             (
-                                address airline_address
+                                address airline_address,
+                                address _caller_airline
                             )
                             external
                             requireIsOperational
-                            requireRegistered(msg.sender)
-                            requireFunded(msg.sender)
+                            requireRegistered(_caller_airline)
+                            requireFunded(_caller_airline)
                             requireIsNotRegistered(airline_address)
                             returns(bool success, uint256 signed)
     {
@@ -206,14 +207,14 @@ contract FlightSuretyData {
             success = true;
         } else {
             for(uint c=0; c<multiCalls.length; c++) {
-                if (multiCalls[c] == msg.sender) {
+                if (multiCalls[c] == _caller_airline) {
                     isDuplicate = true;
                     break;
                 }
             }
             require(!isDuplicate, "Caller has already called this function.");
 
-            multiCalls.push(msg.sender);
+            multiCalls.push(_caller_airline);
             if (multiCalls.length >= totalFundedAirLines.div(2)) {
                 airline[airline_address] = Airline({
                                                     isRegistered: true,
@@ -272,15 +273,16 @@ contract FlightSuretyData {
     */   
     function fund
                             (
+                                address _airline
                             )
                             public
                             requireIsOperational
-                            requireRegistered(msg.sender)
-                            requireIsNotAlreadyFunded(msg.sender)
+                            requireRegistered(_airline)
+                            requireIsNotAlreadyFunded(_airline)
                             paidEnough
                             payable
     {
-      airline[msg.sender].isFunded = true;  
+      airline[_airline].isFunded = true;  
       total_funded_balance.add(msg.value);
       totalFundedAirLines = totalFundedAirLines.add(1);
       contractOwner.transfer(msg.value);
@@ -307,7 +309,7 @@ contract FlightSuretyData {
                             external 
                             payable 
     {
-        fund();
+        fund(msg.sender);
     }
 
 

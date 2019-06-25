@@ -89,17 +89,16 @@ contract('Flight Surety Tests', async (accounts) => {
 
     // ASSERT
     assert.equal(result, false, "Airline should not be able to register another airline if it hasn't provided funding");
-
   });
 
-  it('(airline) can be registered, but does not participate without funding', async () => {
+  it('(airline) can register an Airline using registerAirline() if it is funded', async () => {
     
     // ARRANGE
     let newAirline = accounts[3]; 
 
     // ACT
-    await config.flightSuretyData.fund({from: config.firstAirline, value: web3.toWei("10", "ether")}); 
-    await config.flightSuretyData.registerAirline(newAirline, {from: config.firstAirline});
+    await config.flightSuretyApp.fund(config.firstAirline, {from: config.firstAirline, value: web3.toWei("10", "ether")}); 
+    await config.flightSuretyApp.registerAirline(newAirline, {from: config.firstAirline});
     let result = await config.flightSuretyData.isAirLineRegistred.call(newAirline); 
 
     // ASSERT
@@ -153,12 +152,12 @@ it('(multiparty) Registration of more than 4 airlines requires multiseg', async 
 
     // ACT
     // firstAirline registers the first 3 new airlines
-    await config.flightSuretyData.registerAirline(newAirline1, {from: config.firstAirline});
-    await config.flightSuretyData.fund({from: newAirline1, value: web3.toWei("10", "ether")});
-    await config.flightSuretyData.registerAirline(newAirline2, {from: config.firstAirline});
-    await config.flightSuretyData.fund({from: newAirline2, value: web3.toWei("10", "ether")});
-    await config.flightSuretyData.registerAirline(newAirline3, {from: config.firstAirline});
-    await config.flightSuretyData.fund({from: newAirline3, value: web3.toWei("10", "ether")});
+    await config.flightSuretyApp.registerAirline(newAirline1, {from: config.firstAirline});
+    await config.flightSuretyApp.fund(newAirline1, {from: newAirline1, value: web3.toWei("10", "ether")});
+    await config.flightSuretyApp.registerAirline(newAirline2, {from: config.firstAirline});
+    await config.flightSuretyApp.fund(newAirline2, {from: newAirline2, value: web3.toWei("10", "ether")});
+    await config.flightSuretyApp.registerAirline(newAirline3, {from: config.firstAirline});
+    await config.flightSuretyApp.fund(newAirline3, {from: newAirline3, value: web3.toWei("10", "ether")});
  
     // The first 3 airlines should be registred.
     let result1 = await config.flightSuretyData.isAirLineRegistred.call(newAirline1); 
@@ -166,12 +165,12 @@ it('(multiparty) Registration of more than 4 airlines requires multiseg', async 
     let result3 = await config.flightSuretyData.isAirLineRegistred.call(newAirline3); 
 
     // firstAirlines votes to register the 4th airlines
-    await config.flightSuretyData.registerAirline(newAirline4, {from: config.firstAirline});
+    await config.flightSuretyApp.registerAirline(newAirline4, {from: config.firstAirline});
     // Multiseg enabled: The 4th airline shouldn't be registred because 1 more vote is missing.
     let result4 = await config.flightSuretyData.isAirLineRegistred.call(newAirline4);
 
     // 3 more airlines vote to register airline4
-    await config.flightSuretyData.registerAirline(newAirline4, {from: newAirline1});
+    await config.flightSuretyApp.registerAirline(newAirline4, {from: newAirline1});
     let result5 = await config.flightSuretyData.isAirLineRegistred.call(newAirline4);
 
     // ASSERT
